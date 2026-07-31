@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">AppList</string>
+    <string name="accessibility_service_description">Automatically clears recent apps when the recents screen is opened. Works with most launchers.</string>
 </resources>

@@ -88,6 +88,22 @@ class AppFilterTest {
     }
 
     @Test
+    fun `category pin returns only pinned apps`() {
+        val apps = listOf(app("Pinned", "p", system = true), app("Other", "o"))
+        val result = AppFilter.apply(
+            apps, "", AppCategory.PIN, SortOption.NAME, pinnedPackages = setOf("p")
+        )
+        assertEquals(listOf("p"), result.map { it.packageName })
+    }
+
+    @Test
+    fun `category pin with no pins returns empty`() {
+        val apps = listOf(app("A", "a"))
+        val result = AppFilter.apply(apps, "", AppCategory.PIN, SortOption.NAME)
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
     fun `sorts by name case insensitively`() {
         val apps = listOf(app("banana", "b"), app("Apple", "a"))
         val result = AppFilter.apply(apps, "", AppCategory.ALL, SortOption.NAME)
@@ -137,43 +153,13 @@ class AppFilterTest {
     }
 
     @Test
-    fun `hides system apps when toggle is off`() {
-        val apps = listOf(
-            app("Sys", "s", system = true),
-            app("User", "u", system = false)
-        )
-        val result = AppFilter.apply(apps, "", AppCategory.ALL, SortOption.NAME, showSystemApps = false)
-        assertEquals(listOf("User"), result.map { it.appName })
-    }
-
-    @Test
-    fun `hides updated system apps when toggle is off`() {
-        val apps = listOf(
-            app("Updated Sys", "us", system = true, updated = true),
-            app("User", "u", system = false)
-        )
-        val result = AppFilter.apply(apps, "", AppCategory.ALL, SortOption.NAME, showSystemApps = false)
-        assertEquals(listOf("User"), result.map { it.appName })
-    }
-
-    @Test
-    fun `shows system apps by default`() {
+    fun `shows system apps in ALL category`() {
         val apps = listOf(
             app("Sys", "s", system = true),
             app("User", "u", system = false)
         )
         val result = AppFilter.apply(apps, "", AppCategory.ALL, SortOption.NAME)
         assertEquals(2, result.size)
-    }
-
-    @Test
-    fun `toggle off still honors category filter`() {
-        val apps = listOf(
-            app("Sys", "s", system = true),
-            app("User Disabled", "ud", system = false, enabled = false)
-        )
-        val result = AppFilter.apply(apps, "", AppCategory.DISABLED, SortOption.NAME, showSystemApps = false)
-        assertEquals(listOf("User Disabled"), result.map { it.appName })
     }
 
     @Test

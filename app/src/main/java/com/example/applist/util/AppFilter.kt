@@ -15,22 +15,23 @@ object AppFilter {
         query: String,
         category: AppCategory,
         sortOption: SortOption,
-        showSystemApps: Boolean = true
+        pinnedPackages: Set<String> = emptySet()
     ): List<AppInfo> {
         val q = query.trim()
         val filtered = apps.filter { app ->
-            val systemAllowed = showSystemApps || !app.isSystemApp
             val categoryMatch = when (category) {
                 AppCategory.ALL -> true
                 AppCategory.USER -> !app.isSystemApp
                 AppCategory.SYSTEM -> app.isSystemApp && !app.isUpdatedSystemApp
                 AppCategory.UPDATED_SYSTEM -> app.isUpdatedSystemApp
                 AppCategory.DISABLED -> !app.isEnabled
+                AppCategory.PIN -> app.packageName in pinnedPackages
+                AppCategory.RAM -> false
             }
             val queryMatch = q.isEmpty() ||
                 app.appName.contains(q, ignoreCase = true) ||
                 app.packageName.contains(q, ignoreCase = true)
-            systemAllowed && categoryMatch && queryMatch
+            categoryMatch && queryMatch
         }
         return when (sortOption) {
             SortOption.NAME -> filtered.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.appName })

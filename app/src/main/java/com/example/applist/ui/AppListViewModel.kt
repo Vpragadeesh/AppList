@@ -7,22 +7,26 @@ import com.example.applist.data.FavoritesStore
 import com.example.applist.model.AppCategory
 import com.example.applist.model.AppInfo
 import com.example.applist.model.SortOption
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class AppListUiState(
     val apps: List<AppInfo> = emptyList(),
     val isLoading: Boolean = false,
     val searchQuery: String = "",
-    val category: AppCategory = AppCategory.ALL,
+    val category: AppCategory = AppCategory.PIN,
     val sortOption: SortOption = SortOption.NAME,
-    val showSystemApps: Boolean = true,
-    val favorites: Set<String> = emptySet(),
+    val pinned: Set<String> = emptySet(),
     val newAppsDetected: List<String> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val launchIntents: Map<String, android.content.Intent> = emptyMap(),
+    val userCount: Int = 0,
+    val systemCount: Int = 0
 )
 
 class AppListViewModel(
@@ -30,7 +34,7 @@ class AppListViewModel(
     private val favoritesStore: FavoritesStore
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(AppListUiState(favorites = favoritesStore.getAll()))
+    private val _uiState = MutableStateFlow(AppListUiState(pinned = favoritesStore.getAll()))
     val uiState: StateFlow<AppListUiState> = _uiState.asStateFlow()
 
     val repository: AppRepository get() = repo
@@ -58,8 +62,23 @@ class AppListViewModel(
                     emptySet()
                 }
                 previousPackages = packageSet
+                // Pre-compute launch intents on background thread
+                val launchIntents = withContext(Dispatchers.IO) {
+                    apps.mapNotNull { app ->
+                        repo.getLaunchIntent(app.packageName)?.let { app.packageName to it }
+                    }.toMap()
+                }
+                val userCount = apps.count { !it.isSystemApp }
+                val systemCount = apps.count { it.isSystemApp }
                 _uiState.update {
-                    it.copy(apps = apps, isLoading = false, newAppsDetected = newApps.toList())
+                    it.copy(
+                        apps = apps,
+                        isLoading = false,
+                        newAppsDetected = newApps.toList(),
+                        launchIntents = launchIntents,
+                        userCount = userCount,
+                        systemCount = systemCount
+                    )
                 }
             } catch (e: Exception) {
                 _uiState.update {
@@ -69,16 +88,22 @@ class AppListViewModel(
         }
     }
 
-    fun setSearchQuery(query: String) = _uiState.update { it.copy(searchQuery = query) }
+    private var searchJob: kotlinx.coroutines.Job? = null
+
+    fun setSearchQuery(query: String) {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(300) // debounce
+            _uiState.update { it.copy(searchQuery = query) }
+        }
+    }
 
     fun setCategory(category: AppCategory) = _uiState.update { it.copy(category = category) }
 
     fun setSortOption(option: SortOption) = _uiState.update { it.copy(sortOption = option) }
 
-    fun setShowSystemApps(show: Boolean) = _uiState.update { it.copy(showSystemApps = show) }
-
-    fun toggleFavorite(packageName: String) {
-        val favorites = favoritesStore.toggle(packageName)
-        _uiState.update { it.copy(favorites = favorites) }
+    fun togglePinned(packageName: String) {
+        val pinned = favoritesStore.toggle(packageName)
+        _uiState.update { it.copy(pinned = pinned) }
     }
 }

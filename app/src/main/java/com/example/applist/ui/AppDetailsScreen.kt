@@ -23,12 +23,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -81,7 +80,7 @@ fun AppDetailsScreen(
             topBar = {
                 TopAppBar(title = { Text("App details") }, navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 })
             }
@@ -110,8 +109,8 @@ fun AppDetailsScreen(
 
     val context = LocalContext.current
     val launchIntent = remember(app.packageName) { repository.getLaunchIntent(app.packageName) }
-    var isFavorite by remember(app.packageName, state.favorites) {
-        mutableStateOf(app.packageName in state.favorites)
+    var isPinned by remember(app.packageName, state.pinned) {
+        mutableStateOf(app.packageName in state.pinned)
     }
 
     Scaffold(
@@ -120,20 +119,20 @@ fun AppDetailsScreen(
                 title = { Text(app.appName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
                     IconButton(
                         onClick = {
-                            viewModel.toggleFavorite(app.packageName)
-                            isFavorite = !isFavorite
+                            viewModel.togglePinned(app.packageName)
+                            isPinned = !isPinned
                         }
                     ) {
                         Icon(
-                            imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                            contentDescription = "Toggle favorite",
-                            tint = if (isFavorite) MaterialTheme.colorScheme.primary
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = "Pin",
+                            tint = if (isPinned) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

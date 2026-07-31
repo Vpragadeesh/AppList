@@ -2,9 +2,6 @@ package com.example.applist.ui
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.drawable.Drawable
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,37 +15,32 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -56,44 +48,35 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.drawable.toBitmap
 import com.example.applist.model.AppCategory
 import com.example.applist.model.AppInfo
 import com.example.applist.model.SortOption
 import com.example.applist.util.AppFilter
 import com.example.applist.util.ExportUtils
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun AppListScreen(
     viewModel: AppListViewModel,
-    onAppClick: (AppInfo) -> Unit
+    onAppClick: (AppInfo) -> Unit,
+    onNavigateToRam: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    val filteredApps = remember(state.apps, state.searchQuery, state.category, state.sortOption, state.showSystemApps) {
+    val filteredApps = remember(state.apps, state.searchQuery, state.category, state.sortOption, state.pinned) {
         AppFilter.apply(
             state.apps,
             state.searchQuery,
             state.category,
             state.sortOption,
-            state.showSystemApps
+            state.pinned
         )
     }
 
@@ -123,13 +106,14 @@ fun AppListScreen(
                     }
                     SortMenu(
                         current = state.sortOption,
-                        showSystemApps = state.showSystemApps,
                         onSelect = viewModel::setSortOption,
-                        onToggleShowSystemApps = { viewModel.setShowSystemApps(!state.showSystemApps) },
                         onCheckForNewApps = viewModel::loadApps
                     )
                     IconButton(onClick = { shareApps(context, state.apps) }) {
                         Icon(Icons.Filled.Share, contentDescription = "Share app list")
+                    }
+                    IconButton(onClick = onNavigateToRam) {
+                        Icon(Icons.Filled.Settings, contentDescription = "RAM usage")
                     }
                 }
             )
@@ -150,8 +134,8 @@ fun AppListScreen(
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                 singleLine = true
             )
-            CategoryChips(state.category, onSelect = viewModel::setCategory)
-            StatsBar(state.apps)
+            CategoryTabs(state.category, onSelect = viewModel::setCategory)
+            StatsBar(state)
 
             Box(
                 modifier = Modifier
@@ -183,27 +167,36 @@ fun AppListScreen(
                     filteredApps.isEmpty() -> {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text(
-                                "No apps match your filters",
+                                if (state.category == AppCategory.PIN) {
+                                    "No pinned apps yet\nTap the star on any app to pin it"
+                                } else {
+                                    "No apps match your filters"
+                                },
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-                    else -> {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 16.dp)
-                        ) {
-                            items(filteredApps, key = { it.packageName }) { app ->
-                                AppListItem(
-                                    app = app,
-                                    isFavorite = app.packageName in state.favorites,
-                                    onClick = { onAppClick(app) },
-                                    iconLoader = viewModel.repository::loadIcon
-                                )
-                            }
-                        }
+else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    items(filteredApps, key = { it.packageName }) { app ->
+                        val launchIntent = state.launchIntents[app.packageName]
+                        AppListItem(
+                            app = app,
+                            isPinned = app.packageName in state.pinned,
+                            onLaunch = {
+                                launchIntent?.let { context.startActivity(it) }
+                            },
+                            onDetailsClick = { onAppClick(app) },
+                            onTogglePin = { viewModel.togglePinned(app.packageName) },
+                            iconLoader = viewModel.repository::loadIcon
+                        )
                     }
+                }
+            }
                 }
                 PullRefreshIndicator(
                     refreshing = state.isLoading,
@@ -219,9 +212,7 @@ fun AppListScreen(
 @Composable
 private fun SortMenu(
     current: SortOption,
-    showSystemApps: Boolean,
     onSelect: (SortOption) -> Unit,
-    onToggleShowSystemApps: () -> Unit,
     onCheckForNewApps: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -261,144 +252,36 @@ private fun SortMenu(
                     Icon(Icons.Filled.Refresh, contentDescription = null)
                 }
             )
-            DropdownMenuItem(
-                text = { Text("Show system apps") },
-                onClick = {
-                    onToggleShowSystemApps()
-                    expanded = false
-                },
-                trailingIcon = {
-                    Checkbox(
-                        checked = showSystemApps,
-                        onCheckedChange = null
-                    )
-                }
-            )
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CategoryChips(selected: AppCategory, onSelect: (AppCategory) -> Unit) {
-    LazyRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(vertical = 4.dp)
+private fun CategoryTabs(selected: AppCategory, onSelect: (AppCategory) -> Unit) {
+    val selectedIndex = AppCategory.entries.indexOf(selected)
+    ScrollableTabRow(
+        selectedTabIndex = selectedIndex,
+        modifier = Modifier.fillMaxWidth(),
+        edgePadding = 16.dp
     ) {
-        items(AppCategory.entries) { category ->
-            FilterChip(
-                selected = selected == category,
+        AppCategory.entries.forEachIndexed { index, category ->
+            Tab(
+                selected = index == selectedIndex,
                 onClick = { onSelect(category) },
-                label = { Text(category.label) }
+                text = { Text(category.label) }
             )
         }
     }
 }
 
 @Composable
-private fun StatsBar(apps: List<AppInfo>) {
-    val userCount = apps.count { !it.isSystemApp }
-    val systemCount = apps.count { it.isSystemApp }
+private fun StatsBar(state: AppListUiState) {
     Text(
-        text = "${apps.size} apps  •  $userCount user  •  $systemCount system",
+        text = "${state.apps.size} apps  •  ${state.userCount} user  •  ${state.systemCount} system",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-    )
-}
-
-@Composable
-private fun AppListItem(
-    app: AppInfo,
-    isFavorite: Boolean,
-    onClick: () -> Unit,
-    iconLoader: suspend (String) -> Drawable?
-) {
-    val icon by produceState<ImageBitmap?>(initialValue = null, key1 = app.packageName) {
-        value = withContext(Dispatchers.IO) {
-            iconLoader(app.packageName)?.toBitmap()?.asImageBitmap()
-        }
-    }
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (icon != null) {
-                androidx.compose.foundation.Image(
-                    bitmap = icon!!,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                )
-            }
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = app.appName,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = app.packageName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                when {
-                    app.isUpdatedSystemApp -> Badge("Updated System")
-                    app.isSystemApp -> Badge("System")
-                    !app.isEnabled -> Badge("Disabled")
-                }
-            }
-            if (isFavorite) {
-                Icon(
-                    imageVector = Icons.Filled.Favorite,
-                    contentDescription = "Favorite",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun Badge(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.Medium,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier
-            .padding(top = 2.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
-            .padding(horizontal = 6.dp, vertical = 1.dp)
     )
 }
 

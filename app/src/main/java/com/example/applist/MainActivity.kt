@@ -18,6 +18,7 @@ import com.example.applist.data.FavoritesStore
 import com.example.applist.ui.AppDetailsScreen
 import com.example.applist.ui.AppListScreen
 import com.example.applist.ui.AppListViewModel
+import com.example.applist.ui.RamScreen
 import com.example.applist.ui.theme.AppListTheme
 
 class MainActivity : ComponentActivity() {
@@ -53,6 +54,9 @@ private fun AppListApp(viewModel: AppListViewModel) {
                 viewModel = viewModel,
                 onAppClick = { app ->
                     navController.navigate("details/${app.packageName}")
+                },
+                onNavigateToRam = {
+                    navController.navigate("ram")
                 }
             )
         }
@@ -61,6 +65,12 @@ private fun AppListApp(viewModel: AppListViewModel) {
             AppDetailsScreen(
                 viewModel = viewModel,
                 packageName = packageName,
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable("ram") {
+            RamScreen(
+                viewModel = viewModel,
                 onBack = { navController.popBackStack() }
             )
         }
