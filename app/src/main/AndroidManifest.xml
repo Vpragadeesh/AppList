@@ -4,6 +4,7 @@
 
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <queries>
         <intent>
@@ -37,14 +38,14 @@
         <activity
             android:name=".ui.AccessibilitySettingsActivity"
             android:exported="false"
-            android:label="Auto-Clear Recents"
+            android:label="Recent Apps"
             android:theme="@style/Theme.AppList" />
 
         <service
             android:name=".ui.ClearRecentsAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="true"
-            android:label="AppList Auto-Clear">
+            android:label="AppList Recent Apps">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>

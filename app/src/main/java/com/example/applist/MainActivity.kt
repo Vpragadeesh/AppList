@@ -15,10 +15,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.applist.data.AppRepository
 import com.example.applist.data.FavoritesStore
+import com.example.applist.data.SettingsStore
 import com.example.applist.ui.AppDetailsScreen
 import com.example.applist.ui.AppListScreen
 import com.example.applist.ui.AppListViewModel
-import com.example.applist.ui.RamScreen
+import com.example.applist.ui.SettingsScreen
+import com.example.applist.ui.SystemMonitorScreen
 import com.example.applist.ui.theme.AppListTheme
 
 class MainActivity : ComponentActivity() {
@@ -29,7 +31,8 @@ class MainActivity : ComponentActivity() {
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as Application
                 AppListViewModel(
                     repo = AppRepository(app),
-                    favoritesStore = FavoritesStore(app)
+                    favoritesStore = FavoritesStore(app),
+                    settingsStore = SettingsStore(app)
                 )
             }
         }
@@ -55,8 +58,11 @@ private fun AppListApp(viewModel: AppListViewModel) {
                 onAppClick = { app ->
                     navController.navigate("details/${app.packageName}")
                 },
-                onNavigateToRam = {
-                    navController.navigate("ram")
+                onNavigateToSettings = {
+                    navController.navigate("settings")
+                },
+                onNavigateToMonitor = {
+                    navController.navigate("monitor")
                 }
             )
         }
@@ -68,9 +74,14 @@ private fun AppListApp(viewModel: AppListViewModel) {
                 onBack = { navController.popBackStack() }
             )
         }
-        composable("ram") {
-            RamScreen(
+        composable("settings") {
+            SettingsScreen(
                 viewModel = viewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable("monitor") {
+            SystemMonitorScreen(
                 onBack = { navController.popBackStack() }
             )
         }

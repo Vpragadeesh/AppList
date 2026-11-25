@@ -53,7 +53,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.example.applist.R
 import com.example.applist.model.AppCategory
 import com.example.applist.model.AppInfo
 import com.example.applist.model.SortOption
@@ -65,18 +67,20 @@ import com.example.applist.util.ExportUtils
 fun AppListScreen(
     viewModel: AppListViewModel,
     onAppClick: (AppInfo) -> Unit,
-    onNavigateToRam: () -> Unit
+    onNavigateToSettings: () -> Unit,
+    onNavigateToMonitor: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    val filteredApps = remember(state.apps, state.searchQuery, state.category, state.sortOption, state.pinned) {
+    val filteredApps = remember(state.apps, state.searchQuery, state.category, state.sortOption, state.pinned, state.showSystemApps) {
         AppFilter.apply(
             state.apps,
             state.searchQuery,
             state.category,
             state.sortOption,
-            state.pinned
+            state.pinned,
+            state.showSystemApps
         )
     }
 
@@ -101,6 +105,12 @@ fun AppListScreen(
             TopAppBar(
                 title = { Text("AppList") },
                 actions = {
+                    IconButton(onClick = onNavigateToMonitor) {
+                        Icon(
+                            painterResource(R.drawable.ic_speedometer),
+                            contentDescription = "System Monitor"
+                        )
+                    }
                     IconButton(onClick = { viewModel.loadApps() }) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
                     }
@@ -112,8 +122,8 @@ fun AppListScreen(
                     IconButton(onClick = { shareApps(context, state.apps) }) {
                         Icon(Icons.Filled.Share, contentDescription = "Share app list")
                     }
-                    IconButton(onClick = onNavigateToRam) {
-                        Icon(Icons.Filled.Settings, contentDescription = "RAM usage")
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
                     }
                 }
             )
@@ -182,13 +192,14 @@ else -> {
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
-                    items(filteredApps, key = { it.packageName }) { app ->
-                        val launchIntent = state.launchIntents[app.packageName]
+                     items(filteredApps, key = { it.packageName }) { app ->
                         AppListItem(
                             app = app,
                             isPinned = app.packageName in state.pinned,
                             onLaunch = {
-                                launchIntent?.let { context.startActivity(it) }
+                                viewModel.getLaunchIntent(app.packageName)?.let {
+                                    context.startActivity(it)
+                                }
                             },
                             onDetailsClick = { onAppClick(app) },
                             onTogglePin = { viewModel.togglePinned(app.packageName) },

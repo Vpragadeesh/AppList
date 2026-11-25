@@ -15,7 +15,8 @@ object AppFilter {
         query: String,
         category: AppCategory,
         sortOption: SortOption,
-        pinnedPackages: Set<String> = emptySet()
+        pinnedPackages: Set<String> = emptySet(),
+        showSystemApps: Boolean = false
     ): List<AppInfo> {
         val q = query.trim()
         val filtered = apps.filter { app ->
@@ -28,10 +29,15 @@ object AppFilter {
                 AppCategory.PIN -> app.packageName in pinnedPackages
                 AppCategory.RAM -> false
             }
+            val systemAllowed = showSystemApps ||
+                !app.isSystemApp ||
+                category == AppCategory.PIN ||
+                category == AppCategory.SYSTEM ||
+                category == AppCategory.UPDATED_SYSTEM
             val queryMatch = q.isEmpty() ||
                 app.appName.contains(q, ignoreCase = true) ||
                 app.packageName.contains(q, ignoreCase = true)
-            categoryMatch && queryMatch
+            categoryMatch && systemAllowed && queryMatch
         }
         return when (sortOption) {
             SortOption.NAME -> filtered.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.appName })

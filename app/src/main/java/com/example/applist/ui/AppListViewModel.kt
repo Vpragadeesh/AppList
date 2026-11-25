@@ -4,16 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.applist.data.AppRepository
 import com.example.applist.data.FavoritesStore
+import com.example.applist.data.SettingsStore
 import com.example.applist.model.AppCategory
 import com.example.applist.model.AppInfo
 import com.example.applist.model.SortOption
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 data class AppListUiState(
     val apps: List<AppInfo> = emptyList(),
@@ -24,22 +23,30 @@ data class AppListUiState(
     val pinned: Set<String> = emptySet(),
     val newAppsDetected: List<String> = emptyList(),
     val error: String? = null,
-    val launchIntents: Map<String, android.content.Intent> = emptyMap(),
     val userCount: Int = 0,
-    val systemCount: Int = 0
+    val systemCount: Int = 0,
+    val showSystemApps: Boolean = false
 )
 
 class AppListViewModel(
     private val repo: AppRepository,
-    private val favoritesStore: FavoritesStore
+    private val favoritesStore: FavoritesStore,
+    private val settingsStore: SettingsStore
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(AppListUiState(pinned = favoritesStore.getAll()))
+    private val _uiState = MutableStateFlow(
+        AppListUiState(
+            pinned = favoritesStore.getAll(),
+            showSystemApps = settingsStore.shouldShowSystemApps()
+        )
+    )
     val uiState: StateFlow<AppListUiState> = _uiState.asStateFlow()
 
     val repository: AppRepository get() = repo
 
     private var previousPackages: Set<String> = emptySet()
+
+    private val _launchIntentCache = mutableMapOf<String, android.content.Intent?>()
 
     init {
         loadApps()
@@ -61,13 +68,10 @@ class AppListViewModel(
                 } else {
                     emptySet()
                 }
-                previousPackages = packageSet
-                // Pre-compute launch intents on background thread
-                val launchIntents = withContext(Dispatchers.IO) {
-                    apps.mapNotNull { app ->
-                        repo.getLaunchIntent(app.packageName)?.let { app.packageName to it }
-                    }.toMap()
+                if (previousPackages.isEmpty()) {
+                    previousPackages = packageSet
                 }
+                _launchIntentCache.clear()
                 val userCount = apps.count { !it.isSystemApp }
                 val systemCount = apps.count { it.isSystemApp }
                 _uiState.update {
@@ -75,7 +79,6 @@ class AppListViewModel(
                         apps = apps,
                         isLoading = false,
                         newAppsDetected = newApps.toList(),
-                        launchIntents = launchIntents,
                         userCount = userCount,
                         systemCount = systemCount
                     )
@@ -88,19 +91,29 @@ class AppListViewModel(
         }
     }
 
-    private var searchJob: kotlinx.coroutines.Job? = null
+    /**
+     * Lazily loads the launch intent for [packageName].
+     * Results are cached so repeated lookups are instant.
+     */
+    fun getLaunchIntent(packageName: String): android.content.Intent? {
+        _launchIntentCache[packageName]?.let { return it }
+        val intent = repo.getLaunchIntent(packageName)
+        _launchIntentCache[packageName] = intent
+        return intent
+    }
 
     fun setSearchQuery(query: String) {
-        searchJob?.cancel()
-        searchJob = viewModelScope.launch {
-            kotlinx.coroutines.delay(300) // debounce
-            _uiState.update { it.copy(searchQuery = query) }
-        }
+        _uiState.update { it.copy(searchQuery = query) }
     }
 
     fun setCategory(category: AppCategory) = _uiState.update { it.copy(category = category) }
 
     fun setSortOption(option: SortOption) = _uiState.update { it.copy(sortOption = option) }
+
+    fun setShowSystemApps(show: Boolean) {
+        settingsStore.setShowSystemApps(show)
+        _uiState.update { it.copy(showSystemApps = show) }
+    }
 
     fun togglePinned(packageName: String) {
         val pinned = favoritesStore.toggle(packageName)

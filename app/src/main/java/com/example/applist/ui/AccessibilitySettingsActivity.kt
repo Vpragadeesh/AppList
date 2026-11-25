@@ -62,7 +62,7 @@ fun AccessibilitySettingsScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Auto-Clear Recents") },
+                title = { Text("Recent Apps Setup") },
                 navigationIcon = {
                     IconButton(onClick = { (context as ComponentActivity).finish() }) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
@@ -91,7 +91,7 @@ fun AccessibilitySettingsScreen() {
                     ) {
                         Column {
                             Text("Accessibility Service", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            Text("Auto-clears recent apps when recents screen opens", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Required to open the recent apps screen", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Icon(
                             imageVector = if (isServiceEnabled) Icons.Filled.CheckCircle else Icons.Filled.Info,
@@ -111,10 +111,10 @@ fun AccessibilitySettingsScreen() {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Setup Instructions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 12.dp))
                     Text("1. Tap \"Open Accessibility Settings\" below", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 4.dp))
-                    Text("2. Find \"AppList Auto-Clear\" in the list", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 4.dp))
+                    Text("2. Find \"AppList Recent Apps\" in the list", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 4.dp))
                     Text("3. Toggle it ON", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 4.dp))
                     Text("4. Allow the permission prompt", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 12.dp))
-                    Text("Note: Works with most stock launchers. Some custom launchers may not be supported.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("This allows AppList to open the system recent apps screen.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Speedometer / gauge icon for the System Monitor entry point.
+     Fill color is a placeholder: Compose's Icon() tints it with the
+     current content color so it follows the app theme automatically. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Gauge arc: open half-ring over the top -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M4.5,17.5 A8,8 0 0 1 19.5,17.5" />
+
+    <!-- Needle pointing to the upper right -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M12,17.5 L16.6,11.2" />
+
+    <!-- Center hub -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12,17.5 m-1.6,0 a1.6,1.6 0 1 0 3.2,0 a1.6,1.6 0 1 0 -3.2,0" />
+</vector>

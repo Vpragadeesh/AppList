@@ -138,7 +138,7 @@ class AppFilterTest {
             app("User A", "ua", system = false),
             app("Sys A", "sa", system = true)
         )
-        val result = AppFilter.apply(apps, "", AppCategory.ALL, SortOption.USER_SYSTEM)
+        val result = AppFilter.apply(apps, "", AppCategory.ALL, SortOption.USER_SYSTEM, showSystemApps = true)
         assertEquals(listOf("User A", "Sys A", "Sys B"), result.map { it.appName })
     }
 
@@ -153,13 +153,43 @@ class AppFilterTest {
     }
 
     @Test
-    fun `shows system apps in ALL category`() {
+    fun `shows system apps in ALL category when enabled`() {
+        val apps = listOf(
+            app("Sys", "s", system = true),
+            app("User", "u", system = false)
+        )
+        val result = AppFilter.apply(apps, "", AppCategory.ALL, SortOption.NAME, showSystemApps = true)
+        assertEquals(2, result.size)
+    }
+
+    @Test
+    fun `system apps hidden by default in ALL category`() {
         val apps = listOf(
             app("Sys", "s", system = true),
             app("User", "u", system = false)
         )
         val result = AppFilter.apply(apps, "", AppCategory.ALL, SortOption.NAME)
-        assertEquals(2, result.size)
+        assertEquals(listOf("u"), result.map { it.packageName })
+    }
+
+    @Test
+    fun `showSystemApps false hides system apps from ALL`() {
+        val apps = listOf(
+            app("Sys", "s", system = true),
+            app("User", "u", system = false)
+        )
+        val result = AppFilter.apply(apps, "", AppCategory.ALL, SortOption.NAME, showSystemApps = false)
+        assertEquals(listOf("u"), result.map { it.packageName })
+    }
+
+    @Test
+    fun `showSystemApps false keeps system apps in SYSTEM category`() {
+        val apps = listOf(
+            app("Sys", "s", system = true),
+            app("User", "u", system = false)
+        )
+        val result = AppFilter.apply(apps, "", AppCategory.SYSTEM, SortOption.NAME, showSystemApps = false)
+        assertEquals(listOf("s"), result.map { it.packageName })
     }
 
     @Test

@@ -50,10 +50,14 @@ class AppRepository(private val context: Context) {
      * lazily per row via [loadIcon] so the initial list renders quickly.
      */
     suspend fun getInstalledApps(): List<AppInfo> = withContext(Dispatchers.IO) {
-        val packages = pm.getInstalledPackages(PackageManager.PackageInfoFlags.of(0L))
-        packages.mapNotNull { pkg ->
-            val info = pkg.applicationInfo ?: return@mapNotNull null
-            toAppInfo(pkg, info)
+        try {
+            val packages = pm.getInstalledPackages(PackageManager.PackageInfoFlags.of(0L))
+            packages.mapNotNull { pkg ->
+                val info = pkg.applicationInfo ?: return@mapNotNull null
+                toAppInfo(pkg, info)
+            }
+        } catch (e: Exception) {
+            emptyList()
         }
     }
 
@@ -104,8 +108,9 @@ class AppRepository(private val context: Context) {
     private fun toAppInfo(pkg: PackageInfo, info: ApplicationInfo): AppInfo {
         val systemFlag = info.flags and ApplicationInfo.FLAG_SYSTEM
         val updatedFlag = info.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP
+        val label = info.loadLabel(pm)
         return AppInfo(
-            appName = info.loadLabel(pm).toString(),
+            appName = if (label.isNotEmpty()) label.toString() else pkg.packageName,
             packageName = pkg.packageName.orEmpty(),
             icon = null,
             versionName = pkg.versionName.orEmpty(),
